@@ -236,13 +236,15 @@ const { postSlug } = Astro.props;
 
   // ── Click outside to dismiss ───────────────────────────────────────────────
 
-  document.addEventListener('mousedown', (e) => {
+  function handleDismiss(e: Event) {
     const target = e.target as Node;
     if (!toolbar.contains(target)) hideToolbar();
     if (!panel.contains(target) && !(target as HTMLElement).closest?.('mark.ih-highlight')) {
       panel.style.display = 'none';
     }
-  });
+  }
+  document.addEventListener('mousedown', handleDismiss);
+  document.addEventListener('touchstart', handleDismiss, { passive: true });
 
   document.getElementById('ih-panel-close')!.addEventListener('click', () => {
     panel.style.display = 'none';
@@ -250,7 +252,7 @@ const { postSlug } = Astro.props;
 
   // ── Selection listener ─────────────────────────────────────────────────────
 
-  prose.addEventListener('mouseup', () => {
+  function handleSelectionEnd() {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed) return;
     const text = sel.toString().trim();
@@ -267,7 +269,11 @@ const { postSlug } = Astro.props;
 
     // Position after the browser lays out the toolbar
     requestAnimationFrame(() => positionEl(toolbar, rect));
-  });
+  }
+
+  prose.addEventListener('mouseup', handleSelectionEnd);
+  // On mobile, getSelection() may not update until after touchend resolves
+  prose.addEventListener('touchend', () => setTimeout(handleSelectionEnd, 0));
 
   // ── Toolbar buttons ────────────────────────────────────────────────────────
 
