@@ -224,10 +224,15 @@ const { postSlug } = Astro.props;
     pending = null;
   }
 
+  const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+
   function positionEl(el: HTMLElement, refRect: DOMRect) {
     const margin = 8;
-    let top = refRect.top - el.offsetHeight - margin;
-    if (top < margin) top = refRect.bottom + margin;
+    // On touch devices, always place below so the native copy/paste popup (above) has clear space
+    let top = isTouchDevice
+      ? refRect.bottom + margin
+      : refRect.top - el.offsetHeight - margin;
+    if (!isTouchDevice && top < margin) top = refRect.bottom + margin;
     let left = refRect.left + refRect.width / 2 - el.offsetWidth / 2;
     left = Math.max(margin, Math.min(left, window.innerWidth - el.offsetWidth - margin));
     el.style.top = `${top}px`;
