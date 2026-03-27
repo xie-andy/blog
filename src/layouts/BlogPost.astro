@@ -5,10 +5,14 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
+import ArticleReactions from '../components/ArticleReactions.astro';
+import Comments from '../components/Comments.astro';
+import Suggestions from '../components/Suggestions.astro';
+import InlineHighlights from '../components/InlineHighlights.astro';
 
-type Props = CollectionEntry<'blog'>['data'];
+type Props = CollectionEntry<'blog'>['data'] & { slug: string };
 
-const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, slug } = Astro.props;
 ---
 
 <html lang="en">
@@ -52,6 +56,20 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
 			.last-updated-on {
 				font-style: italic;
 			}
+			.bottom-panels {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 0;
+				margin-top: 3rem;
+				padding-top: 1.5rem;
+				border-top: 1px solid rgb(var(--gray-light));
+			}
+			@media (max-width: 600px) {
+				.bottom-panels {
+					grid-template-columns: 1fr;
+					gap: 2rem;
+				}
+			}
 		</style>
 	</head>
 
@@ -76,8 +94,14 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
 						</div>
 						<h1>{title}</h1>
 						<hr />
+						<ArticleReactions postSlug={slug} />
 					</div>
 					<slot />
+					<div class="bottom-panels">
+						<Comments postSlug={slug} />
+						<Suggestions postSlug={slug} />
+					</div>
+					<InlineHighlights postSlug={slug} />
 				</div>
 			</article>
 		</main>

@@ -1,0 +1,278 @@
+---
+interface Props {
+  postSlug: string;
+}
+const { postSlug } = Astro.props;
+---
+
+<section class="suggestions-section" data-slug={postSlug}>
+  <h3>Suggestions</h3>
+  <div class="suggestions-list">
+    <p class="loading-msg">Loading...</p>
+  </div>
+  <form class="suggestion-form">
+    <input type="text" name="author" placeholder="Name (optional)" autocomplete="off" />
+    <textarea name="content" placeholder="Got an idea or suggestion?" rows="3" required></textarea>
+    <button type="submit">Post Suggestion</button>
+  </form>
+</section>
+
+<style>
+  .suggestions-section {
+    padding-top: 1rem;
+    border-left: 1px solid rgb(var(--gray-light));
+    padding-left: 2rem;
+  }
+  .suggestions-section h3 {
+    font-size: 1rem;
+    margin: 0 0 1rem 0;
+    color: rgb(var(--gray-dark));
+  }
+  .suggestion-item {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgb(var(--gray-light));
+  }
+  .suggestion-item:last-child {
+    border-bottom: none;
+  }
+  .suggestion-meta {
+    font-size: 0.78rem;
+    color: rgb(var(--gray));
+    margin-bottom: 0.3rem;
+  }
+  .suggestion-body {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0 0 0.5rem 0;
+  }
+  .vote-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .vote-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 999px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: background 0.15s, border-color 0.15s;
+    font-family: inherit;
+  }
+  .vote-btn:hover {
+    background: rgb(var(--gray-light));
+  }
+  .vote-btn.voted-up {
+    border-color: #22c55e;
+    background: rgba(34, 197, 94, 0.08);
+  }
+  .vote-btn.voted-down {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+  }
+  .vote-btn:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+  .suggestion-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  .suggestion-form input,
+  .suggestion-form textarea {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+  .suggestion-form input:focus,
+  .suggestion-form textarea:focus {
+    outline: none;
+    border-color: #2337ff;
+  }
+  .suggestion-form textarea {
+    resize: vertical;
+  }
+  .suggestion-form button {
+    align-self: flex-start;
+    padding: 0.4rem 1rem;
+    background: #2337ff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-family: inherit;
+    transition: opacity 0.15s;
+  }
+  .suggestion-form button:hover {
+    opacity: 0.85;
+  }
+  .loading-msg {
+    font-size: 0.85rem;
+    color: rgb(var(--gray));
+    margin: 0;
+  }
+  .empty-msg {
+    font-size: 0.85rem;
+    color: rgb(var(--gray));
+    margin: 0 0 1rem 0;
+  }
+  @media (max-width: 600px) {
+    .suggestions-section {
+      border-left: none;
+      padding-left: 0;
+      border-top: 1px solid rgb(var(--gray-light));
+      padding-top: 1.5rem;
+    }
+  }
+</style>
+
+<script>
+  import { supabase } from '../lib/supabase';
+
+  const section = document.querySelector('.suggestions-section') as HTMLElement | null;
+  if (section) {
+    const slug = section.dataset.slug!;
+    const list = section.querySelector('.suggestions-list')!;
+    const form = section.querySelector('.suggestion-form') as HTMLFormElement;
+
+    function formatDate(iso: string) {
+      return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function renderSuggestion(
+      s: { id: string; author_name?: string; content: string; created_at: string },
+      upvotes: number,
+      downvotes: number
+    ) {
+      const item = document.createElement('div');
+      item.className = 'suggestion-item';
+      item.dataset.id = s.id;
+      item.innerHTML = `
+        <div class="suggestion-meta">${s.author_name ?? 'Anonymous'} · ${formatDate(s.created_at)}</div>
+        <p class="suggestion-body">${s.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+        <div class="vote-row">
+          <button class="vote-btn up-btn" data-id="${s.id}">👍 <span class="up-count">${upvotes}</span></button>
+          <button class="vote-btn down-btn" data-id="${s.id}">👎 <span class="down-count">${downvotes}</span></button>
+        </div>
+      `;
+      return item;
+    }
+
+    function attachVoteHandlers(item: HTMLElement) {
+      const upBtn = item.querySelector('.up-btn') as HTMLButtonElement;
+      const downBtn = item.querySelector('.down-btn') as HTMLButtonElement;
+      const id = upBtn.dataset.id!;
+      const lsKey = `sv:${id}`;
+      const prior = localStorage.getItem(lsKey);
+
+      if (prior === 'up') {
+        upBtn.classList.add('voted-up');
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+      } else if (prior === 'down') {
+        downBtn.classList.add('voted-down');
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+      }
+
+      upBtn.addEventListener('click', async () => {
+        if (localStorage.getItem(lsKey)) return;
+        await supabase.from('suggestion_votes').insert({ suggestion_id: id, vote_type: 'up' });
+        localStorage.setItem(lsKey, 'up');
+        const countEl = item.querySelector('.up-count');
+        if (countEl) countEl.textContent = String(Number(countEl.textContent) + 1);
+        upBtn.classList.add('voted-up');
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+      });
+
+      downBtn.addEventListener('click', async () => {
+        if (localStorage.getItem(lsKey)) return;
+        await supabase.from('suggestion_votes').insert({ suggestion_id: id, vote_type: 'down' });
+        localStorage.setItem(lsKey, 'down');
+        const countEl = item.querySelector('.down-count');
+        if (countEl) countEl.textContent = String(Number(countEl.textContent) + 1);
+        downBtn.classList.add('voted-down');
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+      });
+    }
+
+    const { data: suggestions } = await supabase
+      .from('suggestions')
+      .select('*')
+      .eq('post_slug', slug)
+      .order('created_at', { ascending: false });
+
+    list.innerHTML = '';
+
+    if (!suggestions || suggestions.length === 0) {
+      const msg = document.createElement('p');
+      msg.className = 'empty-msg';
+      msg.textContent = 'No suggestions yet. Have an idea?';
+      list.appendChild(msg);
+    } else {
+      const ids = suggestions.map((s: { id: string }) => s.id);
+      const { data: votes } = await supabase
+        .from('suggestion_votes')
+        .select('suggestion_id, vote_type')
+        .in('suggestion_id', ids);
+
+      const voteCounts: Record<string, { up: number; down: number }> = {};
+      suggestions.forEach((s: { id: string }) => { voteCounts[s.id] = { up: 0, down: 0 }; });
+      if (votes) {
+        votes.forEach((v: { suggestion_id: string; vote_type: string }) => {
+          if (voteCounts[v.suggestion_id]) {
+            if (v.vote_type === 'up') voteCounts[v.suggestion_id].up++;
+            else voteCounts[v.suggestion_id].down++;
+          }
+        });
+      }
+
+      suggestions.forEach((s: { id: string; author_name?: string; content: string; created_at: string }) => {
+        const item = renderSuggestion(s, voteCounts[s.id].up, voteCounts[s.id].down);
+        attachVoteHandlers(item);
+        list.appendChild(item);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const author = (form.elements.namedItem('author') as HTMLInputElement).value.trim();
+      const content = (form.elements.namedItem('content') as HTMLTextAreaElement).value.trim();
+      if (!content) return;
+
+      const submitBtn = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Posting...';
+
+      const { data: inserted } = await supabase
+        .from('suggestions')
+        .insert({ post_slug: slug, author_name: author || null, content })
+        .select()
+        .single();
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Post Suggestion';
+
+      if (inserted) {
+        list.querySelector('.empty-msg')?.remove();
+        const item = renderSuggestion(inserted, 0, 0);
+        attachVoteHandlers(item);
+        list.insertBefore(item, list.firstChild);
+        form.reset();
+      }
+    });
+  }
+</script>

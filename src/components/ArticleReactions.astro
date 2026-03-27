@@ -1,0 +1,117 @@
+---
+interface Props {
+  postSlug: string;
+}
+const { postSlug } = Astro.props;
+
+const reactions = [
+  { type: 'heart', emoji: '❤️' },
+  { type: 'laugh', emoji: '😂' },
+  { type: 'wow',   emoji: '😮' },
+  { type: 'cry',   emoji: '😢' },
+];
+---
+
+<div class="article-reactions" data-slug={postSlug}>
+  {reactions.map(r => (
+    <button class="reaction-btn" data-type={r.type}>
+      <span class="emoji">{r.emoji}</span>
+      <span class="count" data-type={r.type}>·</span>
+    </button>
+  ))}
+</div>
+
+<style>
+  .article-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .reaction-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 999px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    user-select: none;
+  }
+  .reaction-btn:hover {
+    background: rgb(var(--gray-light));
+    border-color: rgb(var(--gray));
+  }
+  .reaction-btn.reacted {
+    border-color: #2337ff;
+    background: rgba(35, 55, 255, 0.06);
+  }
+  .reaction-btn:active {
+    transform: scale(1.15);
+  }
+  .reaction-btn:disabled {
+    cursor: default;
+    opacity: 0.85;
+  }
+  .reaction-btn:disabled:hover {
+    background: rgba(35, 55, 255, 0.06);
+    border-color: #2337ff;
+  }
+  .count {
+    font-size: 0.82rem;
+    color: rgb(var(--gray));
+    min-width: 1ch;
+  }
+</style>
+
+<script>
+  import { supabase } from '../lib/supabase';
+
+  const container = document.querySelector('.article-reactions') as HTMLElement | null;
+  if (container) {
+    const slug = container.dataset.slug!;
+
+    const { data } = await supabase
+      .from('article_reactions')
+      .select('reaction_type')
+      .eq('post_slug', slug);
+
+    const counts: Record<string, number> = { heart: 0, laugh: 0, wow: 0, cry: 0 };
+    if (data) {
+      data.forEach((r: { reaction_type: string }) => {
+        counts[r.reaction_type] = (counts[r.reaction_type] ?? 0) + 1;
+      });
+    }
+
+    for (const [type, count] of Object.entries(counts)) {
+      const el = container.querySelector(`.count[data-type="${type}"]`);
+      if (el) el.textContent = count === 0 ? '0' : String(count);
+    }
+
+    container.querySelectorAll('.reaction-btn').forEach(btn => {
+      const type = (btn as HTMLElement).dataset.type!;
+      const lsKey = `ar:${slug}:${type}`;
+
+      if (localStorage.getItem(lsKey)) {
+        btn.classList.add('reacted');
+        (btn as HTMLButtonElement).disabled = true;
+      }
+
+      btn.addEventListener('click', async () => {
+        if (localStorage.getItem(lsKey)) return;
+        await supabase.from('article_reactions').insert({ post_slug: slug, reaction_type: type });
+        localStorage.setItem(lsKey, '1');
+        const countEl = btn.querySelector('.count');
+        if (countEl) {
+          const current = Number(countEl.textContent) || 0;
+          countEl.textContent = String(current + 1);
+        }
+        btn.classList.add('reacted');
+        (btn as HTMLButtonElement).disabled = true;
+      });
+    });
+  }
+</script>
