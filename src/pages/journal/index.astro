@@ -1,0 +1,76 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../../components/BaseHead.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+
+const entries = (await getCollection('journal')).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<BaseHead title="Journal" description="" />
+		<style>
+			main {
+				width: 720px;
+				max-width: calc(100% - 2em);
+				margin: 4rem auto;
+				padding: 1em;
+			}
+			h1 {
+				margin-bottom: 2rem;
+				padding-bottom: 1rem;
+				border-bottom: 1px solid rgb(var(--gray-light));
+			}
+			ul {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+				display: flex;
+				flex-direction: column;
+				gap: 0.75rem;
+			}
+			ul li a {
+				display: flex;
+				justify-content: space-between;
+				align-items: baseline;
+				text-decoration: none;
+				color: rgb(var(--black));
+				padding: 0.5rem 0;
+				border-bottom: 1px solid rgb(var(--gray-light));
+				transition: color 0.2s ease;
+			}
+			ul li a:hover {
+				color: rgb(var(--accent));
+			}
+			.entry-title {
+				font-weight: 500;
+			}
+			.entry-date {
+				color: rgb(var(--gray));
+				font-size: 0.875em;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>Journal</h1>
+			<ul>
+				{
+					entries.map((entry) => (
+						<li>
+							<a href={`/journal/${entry.id}/`}>
+								<span class="entry-title">{entry.data.title ?? entry.id}</span>
+								<span class="entry-date">
+									<FormattedDate date={entry.data.pubDate} />
+								</span>
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</main>
+	</body>
+</html>

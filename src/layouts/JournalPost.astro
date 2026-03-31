@@ -1,0 +1,60 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import BaseHead from '../components/BaseHead.astro';
+import FormattedDate from '../components/FormattedDate.astro';
+
+type Props = CollectionEntry<'journal'>['data'] & { slug: string };
+
+const { title, pubDate } = Astro.props;
+---
+
+<html lang="en">
+	<head>
+		<BaseHead title={title ?? 'Journal'} description="" />
+		<style>
+			main {
+				width: 720px;
+				max-width: calc(100% - 2em);
+				margin: 4rem auto;
+				padding: 1em;
+			}
+			.title {
+				margin-bottom: 2rem;
+				padding-bottom: 1rem;
+				border-bottom: 1px solid rgb(var(--gray-light));
+			}
+			.title h1 {
+				margin: 0 0 0.25em 0;
+			}
+			.date {
+				color: rgb(var(--gray));
+			}
+			.prose {
+				color: rgb(var(--gray-dark));
+				line-height: 1.8;
+			}
+			.back {
+				display: inline-block;
+				margin-bottom: 2rem;
+				color: rgb(var(--gray));
+				text-decoration: none;
+				font-size: 0.9em;
+			}
+			.back:hover {
+				color: rgb(var(--accent));
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<a class="back" href="/journal">&larr; All entries</a>
+			<div class="title">
+				<div class="date"><FormattedDate date={pubDate} /></div>
+				{title && <h1>{title}</h1>}
+			</div>
+			<div class="prose">
+				<slot />
+			</div>
+		</main>
+	</body>
+</html>
