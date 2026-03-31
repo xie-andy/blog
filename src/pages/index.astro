@@ -18,6 +18,18 @@ const entries = (await getCollection('blog')).sort(
 	<body>
 		<Header />
 		<main>
+			<section class="hero">
+				<h1>andy xie</h1>
+				<p class="bio">computer scientist. I write about personal projects, experiments, and whatever's on my mind.</p>
+			<div class="subscribe-box">
+				<p class="subscribe-label">get notified when i publish something new</p>
+				<form class="subscribe-form" id="subscribe-form">
+					<input type="email" name="email" placeholder="your@email.com" required />
+					<button type="submit">Notify me</button>
+				</form>
+				<p class="subscribe-status" id="subscribe-status" aria-live="polite"></p>
+			</div>
+			</section>
 			<ul>
 				{entries.map((entry) => {
 					const date = entry.data.pubDate;
@@ -34,3 +46,116 @@ const entries = (await getCollection('blog')).sort(
 		<Footer />
 	</body>
 </html>
+
+<style>
+	.hero {
+		padding-bottom: 2em;
+		margin-bottom: 2em;
+		border-bottom: 1px solid rgb(var(--gray-light));
+	}
+	.hero h1 {
+		margin-top: 0;
+		margin-bottom: 0.25em;
+	}
+	.tagline {
+		margin: 0 0 0.75em;
+		color: rgb(var(--gray));
+		font-size: 0.95em;
+	}
+	.bio {
+		margin: 0 0 1.25em;
+	}
+	.subscribe-box {
+		margin-top: 1.5em;
+	}
+	.subscribe-label {
+		margin: 0 0 0.6em;
+		font-size: 0.85em;
+		color: rgb(var(--gray));
+	}
+	.subscribe-form {
+		display: flex;
+		max-width: 380px;
+		border: 1px solid rgb(var(--gray-light));
+		border-radius: 6px;
+		overflow: hidden;
+		background: #fff;
+		transition: border-color 0.15s ease, box-shadow 0.15s ease;
+	}
+	.subscribe-form:focus-within {
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px rgba(35, 55, 255, 0.1);
+	}
+	.subscribe-form input[type="email"] {
+		flex: 1;
+		min-width: 0;
+		padding: 0.6em 0.85em;
+		font-size: 0.9em;
+		font-family: inherit;
+		color: rgb(var(--gray-dark));
+		background: transparent;
+		border: none;
+		outline: none;
+	}
+	.subscribe-form input[type="email"]::placeholder {
+		color: rgb(var(--gray));
+	}
+	.subscribe-form button {
+		flex-shrink: 0;
+		padding: 0.6em 1.1em;
+		font-size: 0.9em;
+		font-family: inherit;
+		background: var(--accent);
+		color: #fff;
+		border: none;
+		border-left: 1px solid rgb(var(--gray-light));
+		cursor: pointer;
+		white-space: nowrap;
+		transition: background 0.15s ease;
+	}
+	.subscribe-form button:hover {
+		background: var(--accent-dark);
+	}
+	.subscribe-form button:disabled {
+		opacity: 0.7;
+		cursor: default;
+	}
+	.subscribe-status {
+		margin: 0.5em 0 0;
+		font-size: 0.85em;
+		color: rgb(var(--gray));
+		min-height: 1.2em;
+	}
+	.subscribe-status.error {
+		color: #c0392b;
+	}
+</style>
+
+<script>
+	const form = document.getElementById('subscribe-form') as HTMLFormElement;
+	const status = document.getElementById('subscribe-status') as HTMLParagraphElement;
+
+	form.addEventListener('submit', async (e) => {
+		e.preventDefault();
+		const btn = form.querySelector('button')!;
+		btn.disabled = true;
+		btn.textContent = 'Subscribing…';
+		status.textContent = '';
+		status.className = 'subscribe-status';
+
+		const body = new FormData(form);
+		const res = await fetch('/api/subscribe', { method: 'POST', body });
+		const json = await res.json();
+
+		if (res.ok) {
+			form.reset();
+			btn.textContent = 'Subscribed!';
+			status.textContent = "You're on the list.";
+		} else {
+			btn.disabled = false;
+			btn.textContent = 'Notify me';
+			status.textContent = json.error ?? 'Something went wrong.';
+			status.classList.add('error');
+		}
+	});
+</script>
