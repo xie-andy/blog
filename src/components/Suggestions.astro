@@ -8,7 +8,7 @@ const { postSlug } = Astro.props;
 <section class="suggestions-section" data-slug={postSlug}>
   <h3>Suggestions</h3>
   <div class="suggestions-list">
-    <p class="loading-msg">Loading...</p>
+    <p class="suggestion-loading-msg">Loading...</p>
   </div>
   <form class="suggestion-form">
     <input type="text" name="author" placeholder="Name (optional)" autocomplete="off" />
@@ -27,55 +27,6 @@ const { postSlug } = Astro.props;
     font-size: 1rem;
     margin: 0 0 1rem 0;
     color: rgb(var(--gray-dark));
-  }
-  .suggestion-item {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid rgb(var(--gray-light));
-  }
-  .suggestion-item:last-child {
-    border-bottom: none;
-  }
-  .suggestion-meta {
-    font-size: 0.78rem;
-    color: rgb(var(--gray));
-    margin-bottom: 0.3rem;
-  }
-  .suggestion-body {
-    font-size: 0.9rem;
-    line-height: 1.5;
-    margin: 0 0 0.5rem 0;
-  }
-  .vote-row {
-    display: flex;
-    gap: 0.5rem;
-  }
-  .vote-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.2rem 0.55rem;
-    border: 1px solid rgb(var(--gray-light));
-    border-radius: 999px;
-    background: white;
-    cursor: pointer;
-    font-size: 0.82rem;
-    transition: background 0.15s, border-color 0.15s;
-    font-family: inherit;
-  }
-  .vote-btn:hover {
-    background: rgb(var(--gray-light));
-  }
-  .vote-btn.voted-up {
-    border-color: #22c55e;
-    background: rgba(34, 197, 94, 0.08);
-  }
-  .vote-btn.voted-down {
-    border-color: #ef4444;
-    background: rgba(239, 68, 68, 0.08);
-  }
-  .vote-btn:disabled {
-    cursor: default;
-    opacity: 0.7;
   }
   .suggestion-form {
     display: flex;
@@ -117,16 +68,6 @@ const { postSlug } = Astro.props;
   .suggestion-form button:hover {
     opacity: 0.85;
   }
-  .loading-msg {
-    font-size: 0.85rem;
-    color: rgb(var(--gray));
-    margin: 0;
-  }
-  .empty-msg {
-    font-size: 0.85rem;
-    color: rgb(var(--gray));
-    margin: 0 0 1rem 0;
-  }
   @media (max-width: 600px) {
     .suggestions-section {
       border-left: none;
@@ -134,6 +75,82 @@ const { postSlug } = Astro.props;
       border-top: 1px solid rgb(var(--gray-light));
       padding-top: 1.5rem;
     }
+  }
+</style>
+
+<style is:global>
+  .suggestion-item {
+    padding: 0.75rem;
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+  }
+  .suggestion-meta {
+    font-size: 0.78rem;
+    color: rgb(var(--gray));
+    margin-bottom: 0.3rem;
+  }
+  .suggestion-body {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0 0 0.25rem 0;
+  }
+  .suggestion-vote-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .suggestion-vote-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 999px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    user-select: none;
+    font-family: inherit;
+  }
+  .suggestion-vote-btn:hover {
+    background: rgb(var(--gray-light));
+    border-color: rgb(var(--gray));
+  }
+  .suggestion-vote-btn:active {
+    transform: scale(1.15);
+  }
+  .suggestion-vote-btn.voted-up {
+    border-color: #22c55e;
+    background: rgba(34, 197, 94, 0.08);
+  }
+  .suggestion-vote-btn.voted-down {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+  }
+  .suggestion-vote-btn:disabled {
+    cursor: default;
+    opacity: 0.85;
+  }
+  .suggestion-vote-btn.voted-up:hover,
+  .suggestion-vote-btn.voted-up:disabled:hover {
+    background: rgba(34, 197, 94, 0.08);
+    border-color: #22c55e;
+  }
+  .suggestion-vote-btn.voted-down:hover,
+  .suggestion-vote-btn.voted-down:disabled:hover {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: #ef4444;
+  }
+  .suggestion-loading-msg {
+    font-size: 0.85rem;
+    color: rgb(var(--gray));
+    margin: 0;
+  }
+  .suggestion-empty-msg {
+    font-size: 0.85rem;
+    color: rgb(var(--gray));
+    margin: 0 0 1rem 0;
   }
 </style>
 
@@ -161,17 +178,17 @@ const { postSlug } = Astro.props;
       item.innerHTML = `
         <div class="suggestion-meta">${s.author_name ?? 'Anonymous'} · ${formatDate(s.created_at)}</div>
         <p class="suggestion-body">${s.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
-        <div class="vote-row">
-          <button class="vote-btn up-btn" data-id="${s.id}">👍 <span class="up-count">${upvotes}</span></button>
-          <button class="vote-btn down-btn" data-id="${s.id}">👎 <span class="down-count">${downvotes}</span></button>
+        <div class="suggestion-vote-row">
+          <button class="suggestion-vote-btn up-btn" data-id="${s.id}">👍 <span class="up-count">${upvotes}</span></button>
+          <button class="suggestion-vote-btn down-btn" data-id="${s.id}">👎 <span class="down-count">${downvotes}</span></button>
         </div>
       `;
       return item;
     }
 
     function attachVoteHandlers(item: HTMLElement) {
-      const upBtn = item.querySelector('.up-btn') as HTMLButtonElement;
-      const downBtn = item.querySelector('.down-btn') as HTMLButtonElement;
+      const upBtn = item.querySelector('.suggestion-vote-btn.up-btn') as HTMLButtonElement;
+      const downBtn = item.querySelector('.suggestion-vote-btn.down-btn') as HTMLButtonElement;
       const id = upBtn.dataset.id!;
       const lsKey = `sv:${id}`;
       const prior = localStorage.getItem(lsKey);
@@ -219,7 +236,7 @@ const { postSlug } = Astro.props;
 
     if (!suggestions || suggestions.length === 0) {
       const msg = document.createElement('p');
-      msg.className = 'empty-msg';
+      msg.className = 'suggestion-empty-msg';
       msg.textContent = 'No suggestions yet. Have an idea?';
       list.appendChild(msg);
     } else {
@@ -267,7 +284,7 @@ const { postSlug } = Astro.props;
       submitBtn.textContent = 'Post Suggestion';
 
       if (inserted) {
-        list.querySelector('.empty-msg')?.remove();
+        list.querySelector('.suggestion-empty-msg')?.remove();
         const item = renderSuggestion(inserted, 0, 0);
         attachVoteHandlers(item);
         list.insertBefore(item, list.firstChild);

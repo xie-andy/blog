@@ -8,7 +8,7 @@ const { postSlug } = Astro.props;
 <section class="comments-section" data-slug={postSlug}>
   <h3>Comments</h3>
   <div class="comments-list">
-    <p class="loading-msg">Loading...</p>
+    <p class="comment-loading-msg">Loading...</p>
   </div>
   <form class="comment-form">
     <input type="text" name="author" placeholder="Name (optional)" autocomplete="off" />
@@ -25,23 +25,6 @@ const { postSlug } = Astro.props;
     font-size: 1rem;
     margin: 0 0 1rem 0;
     color: rgb(var(--gray-dark));
-  }
-  .comment-item {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid rgb(var(--gray-light));
-  }
-  .comment-item:last-child {
-    border-bottom: none;
-  }
-  .comment-meta {
-    font-size: 0.78rem;
-    color: rgb(var(--gray));
-    margin-bottom: 0.25rem;
-  }
-  .comment-body {
-    font-size: 0.9rem;
-    line-height: 1.5;
-    margin: 0;
   }
   .comment-form {
     display: flex;
@@ -83,12 +66,78 @@ const { postSlug } = Astro.props;
   .comment-form button:hover {
     opacity: 0.85;
   }
-  .loading-msg {
+</style>
+
+<style is:global>
+  .comment-item {
+    padding: 0.75rem;
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+  }
+  .comment-meta {
+    font-size: 0.78rem;
+    color: rgb(var(--gray));
+    margin-bottom: 0.25rem;
+  }
+  .comment-body {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0 0 0.25rem 0;
+  }
+  .comment-vote-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .comment-vote-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 999px;
+    background: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    user-select: none;
+    font-family: inherit;
+  }
+  .comment-vote-btn:hover {
+    background: rgb(var(--gray-light));
+    border-color: rgb(var(--gray));
+  }
+  .comment-vote-btn:active {
+    transform: scale(1.15);
+  }
+  .comment-vote-btn.voted-up {
+    border-color: #22c55e;
+    background: rgba(34, 197, 94, 0.08);
+  }
+  .comment-vote-btn.voted-down {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.08);
+  }
+  .comment-vote-btn:disabled {
+    cursor: default;
+    opacity: 0.85;
+  }
+  .comment-vote-btn.voted-up:hover,
+  .comment-vote-btn.voted-up:disabled:hover {
+    background: rgba(34, 197, 94, 0.08);
+    border-color: #22c55e;
+  }
+  .comment-vote-btn.voted-down:hover,
+  .comment-vote-btn.voted-down:disabled:hover {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: #ef4444;
+  }
+  .comment-loading-msg {
     font-size: 0.85rem;
     color: rgb(var(--gray));
     margin: 0;
   }
-  .empty-msg {
+  .comment-empty-msg {
     font-size: 0.85rem;
     color: rgb(var(--gray));
     margin: 0 0 1rem 0;
@@ -108,14 +157,63 @@ const { postSlug } = Astro.props;
       return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
     }
 
-    function renderComment(c: { author_name?: string; content: string; created_at: string }) {
+    function renderComment(
+      c: { id: string; author_name?: string; content: string; created_at: string },
+      upvotes: number,
+      downvotes: number
+    ) {
       const item = document.createElement('div');
       item.className = 'comment-item';
+      item.dataset.id = c.id;
       item.innerHTML = `
         <div class="comment-meta">${c.author_name ?? 'Anonymous'} · ${formatDate(c.created_at)}</div>
         <p class="comment-body">${c.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+        <div class="comment-vote-row">
+          <button class="comment-vote-btn up-btn" data-id="${c.id}">👍 <span class="up-count">${upvotes}</span></button>
+          <button class="comment-vote-btn down-btn" data-id="${c.id}">👎 <span class="down-count">${downvotes}</span></button>
+        </div>
       `;
       return item;
+    }
+
+    function attachVoteHandlers(item: HTMLElement) {
+      const upBtn = item.querySelector('.comment-vote-btn.up-btn') as HTMLButtonElement;
+      const downBtn = item.querySelector('.comment-vote-btn.down-btn') as HTMLButtonElement;
+      const id = upBtn.dataset.id!;
+      const lsKey = `cv:${id}`;
+      const prior = localStorage.getItem(lsKey);
+
+      if (prior === 'up') {
+        upBtn.classList.add('voted-up');
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+      } else if (prior === 'down') {
+        downBtn.classList.add('voted-down');
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+      }
+
+      upBtn.addEventListener('click', async () => {
+        if (localStorage.getItem(lsKey)) return;
+        await supabase.from('comment_votes').insert({ comment_id: id, vote_type: 'up' });
+        localStorage.setItem(lsKey, 'up');
+        const countEl = item.querySelector('.up-count');
+        if (countEl) countEl.textContent = String(Number(countEl.textContent) + 1);
+        upBtn.classList.add('voted-up');
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+      });
+
+      downBtn.addEventListener('click', async () => {
+        if (localStorage.getItem(lsKey)) return;
+        await supabase.from('comment_votes').insert({ comment_id: id, vote_type: 'down' });
+        localStorage.setItem(lsKey, 'down');
+        const countEl = item.querySelector('.down-count');
+        if (countEl) countEl.textContent = String(Number(countEl.textContent) + 1);
+        downBtn.classList.add('voted-down');
+        upBtn.disabled = true;
+        downBtn.disabled = true;
+      });
     }
 
     const { data: comments } = await supabase
@@ -127,12 +225,31 @@ const { postSlug } = Astro.props;
     list.innerHTML = '';
     if (!comments || comments.length === 0) {
       const msg = document.createElement('p');
-      msg.className = 'empty-msg';
+      msg.className = 'comment-empty-msg';
       msg.textContent = 'No comments yet. Be the first!';
       list.appendChild(msg);
     } else {
-      comments.forEach((c: { author_name?: string; content: string; created_at: string }) => {
-        list.appendChild(renderComment(c));
+      const ids = comments.map((c: { id: string }) => c.id);
+      const { data: votes } = await supabase
+        .from('comment_votes')
+        .select('comment_id, vote_type')
+        .in('comment_id', ids);
+
+      const voteCounts: Record<string, { up: number; down: number }> = {};
+      comments.forEach((c: { id: string }) => { voteCounts[c.id] = { up: 0, down: 0 }; });
+      if (votes) {
+        votes.forEach((v: { comment_id: string; vote_type: string }) => {
+          if (voteCounts[v.comment_id]) {
+            if (v.vote_type === 'up') voteCounts[v.comment_id].up++;
+            else voteCounts[v.comment_id].down++;
+          }
+        });
+      }
+
+      comments.forEach((c: { id: string; author_name?: string; content: string; created_at: string }) => {
+        const item = renderComment(c, voteCounts[c.id].up, voteCounts[c.id].down);
+        attachVoteHandlers(item);
+        list.appendChild(item);
       });
     }
 
@@ -156,8 +273,10 @@ const { postSlug } = Astro.props;
       submitBtn.textContent = 'Post Comment';
 
       if (inserted) {
-        list.querySelector('.empty-msg')?.remove();
-        list.insertBefore(renderComment(inserted), list.firstChild);
+        list.querySelector('.comment-empty-msg')?.remove();
+        const item = renderComment(inserted, 0, 0);
+        attachVoteHandlers(item);
+        list.insertBefore(item, list.firstChild);
         form.reset();
       }
     });
