@@ -9,6 +9,6 @@ import { defineConfig } from 'astro/config';
 export default defineConfig({
 	site: 'https://example.com',
 	output: 'server',
-	adapter: cloudflare(),
+	adapter: cloudflare({ platformProxy: { enabled: true } }),
 	integrations: [mdx(), sitemap()],
 });

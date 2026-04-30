@@ -68,16 +68,11 @@ const reactions = [
 </style>
 
 <script>
-  import { supabase } from '../lib/supabase';
-
   const container = document.querySelector('.article-reactions') as HTMLElement | null;
   if (container) {
     const slug = container.dataset.slug!;
 
-    const { data } = await supabase
-      .from('article_reactions')
-      .select('reaction_type')
-      .eq('post_slug', slug);
+    const data = await fetch(`/api/article-reactions?slug=${encodeURIComponent(slug)}`).then(r => r.json());
 
     const counts: Record<string, number> = { heart: 0, laugh: 0, wow: 0, cry: 0 };
     if (data) {
@@ -102,7 +97,11 @@ const reactions = [
 
       btn.addEventListener('click', async () => {
         if (localStorage.getItem(lsKey)) return;
-        await supabase.from('article_reactions').insert({ post_slug: slug, reaction_type: type });
+        await fetch('/api/article-reactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ post_slug: slug, reaction_type: type }),
+        });
         localStorage.setItem(lsKey, '1');
         const countEl = btn.querySelector('.count');
         if (countEl) {

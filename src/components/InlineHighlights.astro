@@ -168,7 +168,6 @@ const { postSlug } = Astro.props;
 </style>
 
 <script>
-  import { supabase } from '../lib/supabase';
 
   const root = document.getElementById('ih-root') as HTMLElement | null;
   if (!root) throw new Error('ih-root missing');
@@ -309,12 +308,16 @@ const { postSlug } = Astro.props;
       const type = (btn as HTMLElement).dataset.rtype!;
       const lsKey = `ih:${slug}:${pending.text}:${type}`;
       if (localStorage.getItem(lsKey)) return;
-      await supabase.from('inline_annotations').insert({
-        post_slug: slug,
-        selected_text: pending.text,
-        occurrence_index: pending.occurrenceIndex,
-        annotation_type: 'reaction',
-        reaction_type: type,
+      await fetch('/api/inline-annotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          post_slug: slug,
+          selected_text: pending.text,
+          occurrence_index: pending.occurrenceIndex,
+          annotation_type: 'reaction',
+          reaction_type: type,
+        }),
       });
       localStorage.setItem(lsKey, '1');
       window.getSelection()?.removeAllRanges();
@@ -341,13 +344,17 @@ const { postSlug } = Astro.props;
     const content = (document.getElementById('ih-content') as HTMLTextAreaElement).value.trim();
     if (!content) return;
     const author = (document.getElementById('ih-author') as HTMLInputElement).value.trim();
-    await supabase.from('inline_annotations').insert({
-      post_slug: slug,
-      selected_text: pending.text,
-      occurrence_index: pending.occurrenceIndex,
-      annotation_type: 'comment',
-      content,
-      author_name: author || null,
+    await fetch('/api/inline-annotations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        post_slug: slug,
+        selected_text: pending.text,
+        occurrence_index: pending.occurrenceIndex,
+        annotation_type: 'comment',
+        content,
+        author_name: author || null,
+      }),
     });
     window.getSelection()?.removeAllRanges();
     hideToolbar();
@@ -447,10 +454,7 @@ const { postSlug } = Astro.props;
   }
 
   async function loadAndApply() {
-    const { data: annotations } = await supabase
-      .from('inline_annotations')
-      .select('*')
-      .eq('post_slug', slug);
+    const annotations = await fetch(`/api/inline-annotations?slug=${encodeURIComponent(slug)}`).then(r => r.json());
 
     removeExistingHighlights();
     if (!annotations || annotations.length === 0) return;

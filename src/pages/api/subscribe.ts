@@ -1,8 +1,8 @@
 import type { APIRoute } from 'astro';
-import { supabase } from '../../lib/supabase';
+import { getDB } from '../../lib/db';
 
-export const POST: APIRoute = async ({ request }) => {
-  const data = await request.formData();
+export const POST: APIRoute = async (context) => {
+  const data = await context.request.formData();
   const email = data.get('email')?.toString().trim().toLowerCase();
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -12,12 +12,14 @@ export const POST: APIRoute = async ({ request }) => {
     });
   }
 
-  const { error } = await supabase
-    .from('email_subscribers')
-    .insert({ email });
-
-  if (error) {
-    if (error.code === '23505') {
+  const db = getDB(context);
+  try {
+    await db
+      .prepare('INSERT INTO email_subscribers (email) VALUES (?)')
+      .bind(email)
+      .run();
+  } catch (err: any) {
+    if (err?.message?.includes('UNIQUE constraint failed')) {
       return new Response(JSON.stringify({ error: "You're already subscribed." }), {
         status: 409,
         headers: { 'Content-Type': 'application/json' },

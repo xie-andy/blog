@@ -1,0 +1,8 @@
+name = "blog"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "blog_db"
+database_name = "blog-db"
+database_id = "0fe2706a-3f45-46c7-8c8c-4b5920645411"

@@ -155,8 +155,6 @@ const { postSlug } = Astro.props;
 </style>
 
 <script>
-  import { supabase } from '../lib/supabase';
-
   const section = document.querySelector('.suggestions-section') as HTMLElement | null;
   if (section) {
     const slug = section.dataset.slug!;
@@ -205,7 +203,11 @@ const { postSlug } = Astro.props;
 
       upBtn.addEventListener('click', async () => {
         if (localStorage.getItem(lsKey)) return;
-        await supabase.from('suggestion_votes').insert({ suggestion_id: id, vote_type: 'up' });
+        await fetch('/api/suggestion-votes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ suggestion_id: id, vote_type: 'up' }),
+        });
         localStorage.setItem(lsKey, 'up');
         const countEl = item.querySelector('.up-count');
         if (countEl) countEl.textContent = String(Number(countEl.textContent) + 1);
@@ -216,7 +218,11 @@ const { postSlug } = Astro.props;
 
       downBtn.addEventListener('click', async () => {
         if (localStorage.getItem(lsKey)) return;
-        await supabase.from('suggestion_votes').insert({ suggestion_id: id, vote_type: 'down' });
+        await fetch('/api/suggestion-votes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ suggestion_id: id, vote_type: 'down' }),
+        });
         localStorage.setItem(lsKey, 'down');
         const countEl = item.querySelector('.down-count');
         if (countEl) countEl.textContent = String(Number(countEl.textContent) + 1);
@@ -226,11 +232,7 @@ const { postSlug } = Astro.props;
       });
     }
 
-    const { data: suggestions } = await supabase
-      .from('suggestions')
-      .select('*')
-      .eq('post_slug', slug)
-      .order('created_at', { ascending: false });
+    const suggestions = await fetch(`/api/suggestions?slug=${encodeURIComponent(slug)}`).then(r => r.json());
 
     list.innerHTML = '';
 
@@ -241,10 +243,7 @@ const { postSlug } = Astro.props;
       list.appendChild(msg);
     } else {
       const ids = suggestions.map((s: { id: string }) => s.id);
-      const { data: votes } = await supabase
-        .from('suggestion_votes')
-        .select('suggestion_id, vote_type')
-        .in('suggestion_id', ids);
+      const votes = await fetch(`/api/suggestion-votes?ids=${ids.join(',')}`).then(r => r.json());
 
       const voteCounts: Record<string, { up: number; down: number }> = {};
       suggestions.forEach((s: { id: string }) => { voteCounts[s.id] = { up: 0, down: 0 }; });
@@ -274,11 +273,11 @@ const { postSlug } = Astro.props;
       submitBtn.disabled = true;
       submitBtn.textContent = 'Posting...';
 
-      const { data: inserted } = await supabase
-        .from('suggestions')
-        .insert({ post_slug: slug, author_name: author || null, content })
-        .select()
-        .single();
+      const inserted = await fetch('/api/suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post_slug: slug, author_name: author || null, content }),
+      }).then(r => r.ok ? r.json() : null);
 
       submitBtn.disabled = false;
       submitBtn.textContent = 'Post Suggestion';

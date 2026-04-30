@@ -145,8 +145,6 @@ const { postSlug } = Astro.props;
 </style>
 
 <script>
-  import { supabase } from '../lib/supabase';
-
   const section = document.querySelector('.comments-section') as HTMLElement | null;
   if (section) {
     const slug = section.dataset.slug!;
@@ -195,7 +193,11 @@ const { postSlug } = Astro.props;
 
       upBtn.addEventListener('click', async () => {
         if (localStorage.getItem(lsKey)) return;
-        await supabase.from('comment_votes').insert({ comment_id: id, vote_type: 'up' });
+        await fetch('/api/comment-votes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ comment_id: id, vote_type: 'up' }),
+        });
         localStorage.setItem(lsKey, 'up');
         const countEl = item.querySelector('.up-count');
         if (countEl) countEl.textContent = String(Number(countEl.textContent) + 1);
@@ -206,7 +208,11 @@ const { postSlug } = Astro.props;
 
       downBtn.addEventListener('click', async () => {
         if (localStorage.getItem(lsKey)) return;
-        await supabase.from('comment_votes').insert({ comment_id: id, vote_type: 'down' });
+        await fetch('/api/comment-votes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ comment_id: id, vote_type: 'down' }),
+        });
         localStorage.setItem(lsKey, 'down');
         const countEl = item.querySelector('.down-count');
         if (countEl) countEl.textContent = String(Number(countEl.textContent) + 1);
@@ -216,11 +222,7 @@ const { postSlug } = Astro.props;
       });
     }
 
-    const { data: comments } = await supabase
-      .from('comments')
-      .select('*')
-      .eq('post_slug', slug)
-      .order('created_at', { ascending: false });
+    const comments = await fetch(`/api/comments?slug=${encodeURIComponent(slug)}`).then(r => r.json());
 
     list.innerHTML = '';
     if (!comments || comments.length === 0) {
@@ -230,10 +232,7 @@ const { postSlug } = Astro.props;
       list.appendChild(msg);
     } else {
       const ids = comments.map((c: { id: string }) => c.id);
-      const { data: votes } = await supabase
-        .from('comment_votes')
-        .select('comment_id, vote_type')
-        .in('comment_id', ids);
+      const votes = await fetch(`/api/comment-votes?ids=${ids.join(',')}`).then(r => r.json());
 
       const voteCounts: Record<string, { up: number; down: number }> = {};
       comments.forEach((c: { id: string }) => { voteCounts[c.id] = { up: 0, down: 0 }; });
@@ -263,11 +262,11 @@ const { postSlug } = Astro.props;
       submitBtn.disabled = true;
       submitBtn.textContent = 'Posting...';
 
-      const { data: inserted } = await supabase
-        .from('comments')
-        .insert({ post_slug: slug, author_name: author || null, content })
-        .select()
-        .single();
+      const inserted = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ post_slug: slug, author_name: author || null, content }),
+      }).then(r => r.ok ? r.json() : null);
 
       submitBtn.disabled = false;
       submitBtn.textContent = 'Post Comment';
