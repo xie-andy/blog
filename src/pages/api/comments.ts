@@ -5,7 +5,7 @@ export const GET: APIRoute = async (context) => {
   const slug = new URL(context.request.url).searchParams.get('slug');
   if (!slug) return new Response(JSON.stringify({ error: 'slug required' }), { status: 400 });
 
-  const db = getDB(context);
+  const db = getDB();
   const { results } = await db
     .prepare('SELECT * FROM comments WHERE post_slug = ? ORDER BY created_at DESC')
     .bind(slug)
@@ -24,7 +24,7 @@ export const POST: APIRoute = async (context) => {
 
   const id = crypto.randomUUID();
   const created_at = new Date().toISOString();
-  const db = getDB(context);
+  const db = getDB();
 
   await db
     .prepare('INSERT INTO comments (id, post_slug, author_name, content, created_at) VALUES (?, ?, ?, ?, ?)')

@@ -8,7 +8,7 @@ export const GET: APIRoute = async (context) => {
   const ids = raw.split(',').filter(Boolean);
   if (ids.length === 0) return new Response(JSON.stringify([]), { headers: { 'Content-Type': 'application/json' } });
 
-  const db = getDB(context);
+  const db = getDB();
   const placeholders = ids.map(() => '?').join(',');
   const { results } = await db
     .prepare(`SELECT suggestion_id, vote_type FROM suggestion_votes WHERE suggestion_id IN (${placeholders})`)
@@ -26,7 +26,7 @@ export const POST: APIRoute = async (context) => {
     return new Response(JSON.stringify({ error: 'invalid' }), { status: 400 });
   }
 
-  const db = getDB(context);
+  const db = getDB();
   await db
     .prepare('INSERT INTO suggestion_votes (suggestion_id, vote_type) VALUES (?, ?)')
     .bind(suggestion_id, vote_type)

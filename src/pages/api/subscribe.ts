@@ -12,7 +12,7 @@ export const POST: APIRoute = async (context) => {
     });
   }
 
-  const db = getDB(context);
+  const db = getDB();
   try {
     await db
       .prepare('INSERT INTO email_subscribers (email) VALUES (?)')

@@ -1,8 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
-import type { APIContext } from 'astro';
+import { env } from 'cloudflare:workers';
 
-export function getDB(context: APIContext): D1Database {
-  const db = (context.platform as any)?.env?.blog_db;
-  if (!db) throw new Error('D1 binding "DB" not found. Ensure wrangler.toml is configured.');
+export function getDB(): D1Database {
+  const db = (env as any).blog_db;
+  if (!db) throw new Error('D1 binding "blog_db" not found');
   return db as D1Database;
 }
